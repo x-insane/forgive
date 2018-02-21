@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/navigation_game_list"
+        android:title="@string/navigation_game_list"
+        android:icon="@drawable/ic_navigation_game_list" />
+
+    <item
+        android:id="@+id/navigation_challenge"
+        android:title="@string/navigation_challenge"
+        android:icon="@drawable/ic_navigation_challenge" />
+
+    <item
+        android:id="@+id/navigation_account"
+        android:title="@string/navigation_account"
+        android:icon="@drawable/ic_navigation_account" />
+
+</menu>
