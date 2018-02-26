@@ -1,4 +1,4 @@
-package cn.gotohope.forgive;
+package cn.gotohope.forgive.main.game;
 
 import android.content.Context;
 import android.content.Intent;
@@ -12,17 +12,21 @@ import android.widget.Toast;
 import java.util.List;
 import java.util.Random;
 
+import cn.gotohope.forgive.R;
+import cn.gotohope.forgive.data.Game;
+import cn.gotohope.forgive.game.GameActivity;
+
 /**
  * Created by xinsane on 2018/2/18.
  */
 
 public class GameListAdapter extends RecyclerView.Adapter<GameListAdapter.ViewHolder> {
 
-    private List<GameItem> list;
+    private List<Game> list;
     private Random rand = new Random(System.currentTimeMillis());
     private Context context; // context of GameListFragment
 
-    GameListAdapter(List<GameItem> list, Context context) {
+    GameListAdapter(List<Game> list, Context context) {
         this.list = list;
         this.context = context;
     }
@@ -36,13 +40,14 @@ public class GameListAdapter extends RecyclerView.Adapter<GameListAdapter.ViewHo
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
-        GameItem item = list.get(position);
+        Game item = list.get(position);
         holder.gameId.setText(String.valueOf(position + 1));
         holder.gameStart.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Toast.makeText(context, "开始第 " + (position+1) + " 关游戏", Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(context, GameActivity.class);
+                intent.putExtra("game", list.get(position));
                 context.startActivity(intent);
             }
         });

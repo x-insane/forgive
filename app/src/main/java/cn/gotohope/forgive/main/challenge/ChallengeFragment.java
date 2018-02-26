@@ -1,4 +1,4 @@
-package cn.gotohope.forgive;
+package cn.gotohope.forgive.main.challenge;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -6,12 +6,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
-public class AccountFragment extends Fragment {
+import cn.gotohope.forgive.R;
+
+public class ChallengeFragment extends Fragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_account, container, false);
+        return inflater.inflate(R.layout.fragment_challenge, container, false);
     }
 
 }

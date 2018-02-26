@@ -1,4 +1,4 @@
-package cn.gotohope.forgive;
+package cn.gotohope.forgive.main.game;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -12,9 +12,12 @@ import android.view.ViewGroup;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.gotohope.forgive.R;
+import cn.gotohope.forgive.data.Game;
+
 public class GameListFragment extends Fragment {
 
-    private List<GameItem> list;
+    private List<Game> list;
 
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
@@ -37,7 +40,7 @@ public class GameListFragment extends Fragment {
     private void loadGames() {
         list = new ArrayList<>();
         for (int i=0;i<100;++i) {
-            GameItem item = new GameItem();
+            Game item = new Game();
             list.add(item);
         }
     }
