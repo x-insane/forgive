@@ -1,6 +1,9 @@
 package cn.gotohope.forgive.game;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -11,63 +14,42 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 
+import com.xinsane.util.LogUtil;
+
 import java.util.Random;
-import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 import cn.gotohope.forgive.data.Game;
 
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
     private boolean isRunning;
+    private boolean isStart;
     private boolean isPause;
     private boolean isOver;
+    private boolean isSave;
     private SurfaceHolder holder;
     private Paint paint = new Paint();
-    private int height = 0, width;
+    private float height = 0, width;
     private double offset = 0;
 
+    private Random rand = new Random(System.currentTimeMillis());
+
     private Game game;
-    private Data data;
+    private GameViewData data;
+    private int max_score;
 
-    class Data {
-        private final int loop;
-        private final int[] data;
-        private int step = 0;
-        private Random rand = new Random(System.currentTimeMillis());
+    private double a, v;
 
-        public Data(Game game) {
-            loop = game.row_number() * 2 + 1;
-            data = new int[loop];
-            data[0] = game.column_number();
-        }
-
-        public int get(int i) {
-            i %= loop;
-            if (i == (step + 1) % loop) {
-                data[i] = rand.nextInt(game.column_number());
-                int last = i > 0 ? i - 1 : loop - 1;
-                while (data[i] == data[last])
-                    data[i] = rand.nextInt(game.column_number());
-                step ++;
-            }
-            return data[i];
-        }
-
-        public void set(int i) {
-            i %= loop;
-            int last = i > 0 ? i - 1 : loop - 1;
-            if (data[last] == game.column_number())
-                data[i] = game.column_number();
-        }
-    }
+    private double fps = 0.0;
+    private double p_x = 0.0, p_y = 0.0;
 
     private void init() {
         game = ((GameActivity) getContext()).game;
-        data = new Data(game);
+        data = new GameViewData(game);
+        a = game.a();
+        v = game.v();
+
+        max_score = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(game.getId(), 0);
 
         holder = getHolder();
         holder.addCallback(this);
@@ -76,37 +58,62 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
                 if (isOver)
-                    return false;
-                if (motionEvent.getAction() != MotionEvent.ACTION_DOWN)
-                    return false;
-                int x = (int) (motionEvent.getX() / width * game.column_number());
-                int y = (int) ((height - motionEvent.getY()) / height * game.row_number() + offset);
+                    return true;
+
+                int type = motionEvent.getAction();
+                int x = (int) (motionEvent.getX() / width * game.column_number()) + 1;
+                double Y = (height - motionEvent.getY()) / height * game.row_number() + offset;
+                int y = (int) Y;
+
+                if (type != MotionEvent.ACTION_DOWN &&
+                        type != MotionEvent.ACTION_POINTER_DOWN)
+                    return true;
+
+                p_x = motionEvent.getX();
+                p_y = motionEvent.getY();
+
                 if (data.get(y) == x) {
-                    data.set(y);
-                    if (isPause)
-                        isPause = false;
+                    if (data.set(y)) {
+                        if (isPause)
+                            isPause = false;
+                        LogUtil.d(String.format("(%d, %d), ok", x, y));
+                    } else {
+                        LogUtil.d(String.format("(%d, %d), too fast", x, y));
+                    }
+                } else if (!isPause) {
+                    double helper_up = 0.8;
+                    double helper_down = 0.3;
+                    int y2 = (int) (Y - helper_up);
+                    for (int o = y2; o < y; ++ o) {
+                        if (data.get(o) == x) {
+                            if (data.set(o))
+                                LogUtil.d(String.format("(%d, %d), ok fix up", x, o));
+                            else
+                                LogUtil.d(String.format("(%d, %d), fail fix up", x, o));
+                            return true;
+                        }
+                    }
+                    y2 = (int) (Y + helper_down);
+                    for (int o = y2; o < y; ++ o) {
+                        if (data.get(o) == x) {
+                            if (data.set(o))
+                                LogUtil.d(String.format("(%d, %d), ok fix down", x, o));
+                            else
+                                LogUtil.d(String.format("(%d, %d), fail fix down", x, o));
+                            return true;
+                        }
+                    }
+                    LogUtil.d(String.format("(%d, %d), wrong", x, y));
+                    isOver = true;
+                    data.wrong(x, y);
                 }
                 return true;
             }
         });
+        isStart = false;
         isPause = true;
         isOver = false;
-//        ScheduledExecutorService pool = Executors.newScheduledThreadPool(1);
-//        pool.scheduleAtFixedRate(new TimerTask() {
-//            @Override
-//            public void run() {
-//                if (isPause == false) {
-//                    offset += 0.05;
-//                    int offsetY = (int) offset;
-//                    if (offsetY > 0 && data.get(offsetY-1) != game.column_number()) {
-//                        isOver = true;
-//                        offset -= 1;
-//                    }
-//                }
-//                if (isOver)
-//                    this.cancel();
-//            }
-//        }, 0, 50, TimeUnit.MILLISECONDS);
+        isSave = false;
     }
 
     public GameView(Context context) {
@@ -126,19 +133,46 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     @Override
     public void run() {
-        double a = 0.00002;
-        double v = 0.04;
+        long last = System.currentTimeMillis();
         while (isRunning) {
-            if (isOver == false && isPause == false) {
+            if (!isOver && !isPause) {
+                isStart = true;
                 offset += v;
                 v += a;
+                if (v >= 0.095 && v < 0.095 + a) {
+                    v = 0.095 + a;
+                    a /= 2;
+                }
+                if (v >= 0.11 && v < 0.11 + a) {
+                    v = 0.11 + a;
+                    a /= 2;
+                }
+                if (v > 0.115)
+                    a /= 1.005;
+//                if (v > 0.1 && rand.nextInt(200) == 1) {
+//                    LogUtil.d(String.format("v: %f -> %f", v, v/1.1), "log_v");
+//                    v /= 1.1;
+//                }
+//                if (v > 0.1 && rand.nextInt(2000) == 1) {
+//                    LogUtil.d(String.format("v: %f -> %f", v, v/1.4), "log_v");
+//                    v /= 1.4;
+//                    a *= 3;
+//                }
                 int offsetY = (int) offset;
-                if (offsetY > 0 && data.get(offsetY-1) != game.column_number()) {
+                if (offsetY > 0 && data.get(offsetY-1) != 0) {
+                    data.wrong(offsetY-1);
                     isOver = true;
-                    offset -= 1;
+                    offset = offsetY - 1;
                 }
             }
+            long now = System.currentTimeMillis();
+            fps = 1000.0 / (now - last);
+            last = now;
             draw();
+            if (isOver && !isSave) {
+                save();
+                isSave = true;
+            }
         }
     }
 
@@ -158,6 +192,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         isRunning = false;
     }
 
+    private void drawTile(Canvas canvas, int i, int j, int cx, int cy, Paint paint) {
+        RectF rect = new RectF(i*width/cx, (cy-j)*height/cy, (i+1)*width/cx, (cy-1-j)*height/cy);
+        rect.offset(0, (float) offset * height / cy);
+        canvas.drawRect(rect, paint);
+    }
+
     public void draw() {
         Canvas canvas = holder.lockCanvas();
         if (canvas == null)
@@ -165,21 +205,82 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (height == 0) {
             height = canvas.getHeight();
             width = canvas.getWidth();
+            offset = -400.0 / height * game.row_number();
         }
-        canvas.drawColor(Color.WHITE);
+        canvas.drawColor(0xffe4f2e6);
+
         int offsetY = (int) offset;
         int cx = game.column_number();
         int cy = game.row_number();
+
+        // Tiles
+        paint.setColor(Color.BLACK);
         for (int j = offsetY;j < offsetY + cy + 1; ++j) {
+            if (j < 0)
+                continue;
+            int index = data.get(j);
             for (int i = 0;i < cx; ++i) {
-                if (i == data.get(j)) {
-                    RectF rect = new RectF(i*width/cx, (cy-j)*height/cy, (i+1)*width/cx, (cy-1-j)*height/cy);
-                    rect.offset(0, (float) offset * height / cy);
-                    canvas.drawRect(rect, paint);
-                }
+                if (i + 1 == index)
+                    drawTile(canvas, i, j, cx, cy, paint);
             }
         }
+
+        // Game Info
+        if (!isStart) {
+            RectF info = new RectF(0, height - 400, width, height);
+            paint.setTextSize(55);
+            paint.setColor(0xffd5ebdb);
+            canvas.drawRect(info, paint);
+            paint.setColor(0xff8bc24a);
+            canvas.drawText(game.getName() + " <" + game.getId() + ">", info.left + 140, info.centerY() - 45, paint);
+            canvas.drawText("Max Score: " + max_score, info.left + 140, info.centerY() + 55, paint);
+        }
+
+        // Miss Tile
+        int wrong_step = data.get_wrong_step();
+        if (wrong_step > 0) {
+            paint.setColor(0xffffa500);
+            drawTile(canvas, data.get(wrong_step)-1, wrong_step, cx, cy, paint);
+        }
+
+        // Wrong Tile
+        int wrong_x = data.get_wrong_x();
+        int wrong_y = data.get_wrong_y();
+        if (wrong_y > 0) {
+            paint.setColor(Color.RED);
+            drawTile(canvas, wrong_x - 1, wrong_y, cx, cy, paint);
+        }
+
+        // Score
+        paint.setColor(Color.RED);
+        paint.setTextSize(108);
+        canvas.drawText(String.valueOf(data.score()), 50, 150, paint);
+
+        // Debug v/a & fps
+        paint.setColor(Color.RED);
+        paint.setTextSize(36);
+        String text = String.format("v: %.4f     50a: %.6f     fps: %d", v, a*50, (int) fps);
+        canvas.drawText(text, 65, 50, paint);
+
+        // Debug last wrong point
+        if (wrong_y > 0) {
+            paint.setColor(Color.BLUE);
+            canvas.drawCircle((float) p_x, (float) p_y, 15, paint);
+        }
+
         holder.unlockCanvasAndPost(canvas);
+    }
+
+    private void save() {
+        if (data.score() > max_score) {
+            max_score = data.score();
+            SharedPreferences.Editor editor = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit();
+            editor.putInt(game.getId(), max_score);
+            editor.apply();
+            Intent intent = new Intent();
+            intent.putExtra("best", max_score);
+            ((Activity) getContext()).setResult(Activity.RESULT_OK, intent);
+        }
     }
 
 }
