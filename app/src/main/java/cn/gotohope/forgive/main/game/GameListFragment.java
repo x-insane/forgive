@@ -2,13 +2,11 @@ package cn.gotohope.forgive.main.game;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.Toolbar;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,13 +19,15 @@ import com.google.gson.JsonParser;
 import java.util.ArrayList;
 import java.util.List;
 
+import cn.gotohope.forgive.App;
 import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.data.Game;
 import cn.gotohope.forgive.util.FileManager;
 
 public class GameListFragment extends Fragment {
 
-    private List<Game> list;
+    private static List<Game> list;
+    private static GameListAdapter adapter;
     private RecyclerView recyclerView;
 
     @Override
@@ -44,7 +44,7 @@ public class GameListFragment extends Fragment {
         recyclerView = getView().findViewById(R.id.game_list_recycler_view);
         LinearLayoutManager layoutManager = new LinearLayoutManager(getView().getContext());
         recyclerView.setLayoutManager(layoutManager);
-        GameListAdapter adapter = new GameListAdapter(list, this);
+        adapter = new GameListAdapter(list, this);
         recyclerView.setAdapter(adapter);
 
 //        Toolbar toolbar = getView().findViewById(R.id.game_list_toolbar);
@@ -61,9 +61,9 @@ public class GameListFragment extends Fragment {
         holder.gameBest.setText("Best: " + data.getIntExtra("best", 0));
     }
 
-    private void loadGames() {
+    private static void loadGames() {
         list = new ArrayList<>();
-        String json = FileManager.readAsset(getContext(), "game_list.json");
+        String json = FileManager.readAsset(App.getContext(), "game_list.json");
         if (json == null)
             return;
         Gson gson = new Gson();
@@ -71,9 +71,15 @@ public class GameListFragment extends Fragment {
         JsonArray data = parser.parse(json).getAsJsonArray();
         for (JsonElement e : data) {
             Game item = gson.fromJson(e, Game.class);
-            item.best = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(item.getId(), 0);
+            item.best = App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(item.getId(), 0);
             list.add(item);
         }
+    }
+
+    public static void freshList() {
+        loadGames();
+        if (adapter != null)
+            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
     }
 
 }

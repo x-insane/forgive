@@ -10,8 +10,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
 
-import com.xinsane.util.LogUtil;
-
 import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.main.account.AccountFragment;
 import cn.gotohope.forgive.main.challenge.ChallengeFragment;
@@ -25,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private GameListFragment gameListFragment = new GameListFragment();
     private ChallengeFragment challengeFragment = new ChallengeFragment();
 
-    private BottomNavigationView navigation;
+    public BottomNavigationView navigation;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

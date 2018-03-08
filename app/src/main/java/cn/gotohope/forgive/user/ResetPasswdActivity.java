@@ -1,5 +1,6 @@
 package cn.gotohope.forgive.user;
 
+import android.annotation.SuppressLint;
 import android.os.Handler;
 import android.os.Message;
 import android.support.design.widget.TextInputEditText;
@@ -10,6 +11,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.xinsane.util.HttpApi;
+
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Pattern;
@@ -19,16 +22,35 @@ import cn.gotohope.forgive.util.Helper;
 
 public class ResetPasswdActivity extends AppCompatActivity {
 
-    private TextInputEditText phone, password, captcha;
-    
-    private Button btn_captcha, btn_submit;
+    private static class MessageHandler extends Handler {
 
-    private Handler handler = new Handler() {
+        static final int EVENT_RESET_PASSWORD_SUCCESS = 0x01;
+        static final int EVENT_RESET_PASSWORD_FAIL = 0x02;
+        static final int EVENT_PHONE_MESSAGE_SUCCESS = 0x03;
+        static final int EVENT_PHONE_MESSAGE_FAIL = 0x04;
+        static final int EVENT_PHONE_MESSAGE_INTERVAL = 0x05;
+
+        private AppCompatActivity activity;
+        private Button btn_submit, btn_captcha;
+        MessageHandler(AppCompatActivity activity, Button btn_submit, Button btn_captcha) {
+            this.activity = activity;
+            this.btn_submit = btn_submit;
+            this.btn_captcha = btn_captcha;
+        }
+
+        @SuppressLint("SetTextI18n")
         @Override
         public void handleMessage(Message msg) {
-            if (msg.what == -1) {
-                if (msg.obj == null) {
-                    Toast.makeText(ResetPasswdActivity.this, "发送验证码成功，请注意查收短信", Toast.LENGTH_SHORT).show();
+            switch (msg.what) {
+                case EVENT_RESET_PASSWORD_SUCCESS:
+                    Toast.makeText(activity, "重置密码成功", Toast.LENGTH_LONG).show();
+                    activity.finish();
+                    break;
+                case EVENT_RESET_PASSWORD_FAIL:
+                    Toast.makeText(activity, "重置密码失败：" + msg.obj.toString(), Toast.LENGTH_SHORT).show();
+                    break;
+                case EVENT_PHONE_MESSAGE_SUCCESS:
+                    Toast.makeText(activity, "发送验证码成功，请注意查收短信", Toast.LENGTH_SHORT).show();
                     btn_submit.setEnabled(true);
                     btn_captcha.setText("获取验证码(30)");
                     Timer timer = new Timer();
@@ -40,34 +62,34 @@ public class ResetPasswdActivity extends AppCompatActivity {
                             if (t <= 0)
                                 cancel();
                             Message message = new Message();
-                            message.what = t;
-                            handler.sendMessage(message);
+                            message.what = EVENT_PHONE_MESSAGE_INTERVAL;
+                            message.arg1 = t;
+                            MessageHandler.this.sendMessage(message);
                         }
                     }, 1000, 1000);
-                }
-                else {
-                    Toast.makeText(ResetPasswdActivity.this, msg.obj.toString(), Toast.LENGTH_SHORT).show();
+                    break;
+                case EVENT_PHONE_MESSAGE_FAIL:
+                    Toast.makeText(activity, msg.obj.toString(), Toast.LENGTH_SHORT).show();
+                    btn_captcha.setText("获取验证码");
                     btn_captcha.setEnabled(true);
-                }
-                return;
-            } else if (msg.what == -2) {
-                if (msg.obj == null) {
-                    Toast.makeText(ResetPasswdActivity.this, "重置密码成功", Toast.LENGTH_LONG).show();
-                    finish();
-                }
-                else
-                    Toast.makeText(ResetPasswdActivity.this, msg.obj.toString(), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int t = msg.what;
-            if (t > 0)
-                btn_captcha.setText("获取验证码(" + t + ")");
-            else {
-                btn_captcha.setText("获取验证码");
-                btn_captcha.setEnabled(true);
+                    break;
+                case EVENT_PHONE_MESSAGE_INTERVAL:
+                    int t = msg.arg1;
+                    if (t > 0)
+                        btn_captcha.setText("获取验证码(" + t + ")");
+                    else {
+                        btn_captcha.setText("获取验证码");
+                        btn_captcha.setEnabled(true);
+                    }
+                    break;
             }
         }
-    };
+    }
+
+    private TextInputEditText phone, password, captcha;
+    private Button btn_captcha;
+
+    private Handler handler;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,8 +99,9 @@ public class ResetPasswdActivity extends AppCompatActivity {
         password = findViewById(R.id.et_password);
         captcha = findViewById(R.id.et_captcha);
         btn_captcha = findViewById(R.id.btn_get_captcha);
-        btn_submit = findViewById(R.id.btn_submit);
+        Button btn_submit = findViewById(R.id.btn_submit);
         phone.setText(getIntent().getStringExtra("phone"));
+        handler = new MessageHandler(this, btn_submit, btn_captcha);
     }
 
     public void requestMessage(View view) {
@@ -88,15 +111,27 @@ public class ResetPasswdActivity extends AppCompatActivity {
             builder.setMessage("请输入正确的11位手机号").setPositiveButton("确定", null).show();
             return;
         }
-        new Thread() {
+        UserManager.requestMessage(account, UserManager.TYPE_RESET_PASSWORD, new HttpApi.Listener() {
             @Override
-            public void run() {
+            public void onResult(HttpApi.Result result) {
                 Message message = new Message();
-                message.what = -1;
-                message.obj = UserManager.requestMessageForResetPassword(account);
+                if (result.isSuccess())
+                    message.what = MessageHandler.EVENT_PHONE_MESSAGE_SUCCESS;
+                else {
+                    message.what = MessageHandler.EVENT_PHONE_MESSAGE_FAIL;
+                    message.obj = result.getMessage();
+                }
                 handler.sendMessage(message);
             }
-        }.start();
+            @Override
+            public void onFail(String msg) {
+                Message message = new Message();
+                message.what = MessageHandler.EVENT_PHONE_MESSAGE_FAIL;
+                message.obj = msg;
+                handler.sendMessage(message);
+            }
+        });
+        btn_captcha.setText("正在获取验证码");
         btn_captcha.setEnabled(false);
     }
 
@@ -119,15 +154,26 @@ public class ResetPasswdActivity extends AppCompatActivity {
             builder.setMessage("密码不能为空").setPositiveButton("确定", null).show();
             return;
         }
-        new Thread() {
+        UserManager.resetPassword(account, Helper.md5(passwd), code, new HttpApi.Listener() {
             @Override
-            public void run() {
+            public void onResult(HttpApi.Result result) {
                 Message message = new Message();
-                message.what = -2;
-                message.obj = UserManager.resetPassword(account, Helper.md5(passwd), code);
+                if (result.isSuccess())
+                    message.what = MessageHandler.EVENT_RESET_PASSWORD_SUCCESS;
+                else {
+                    message.what = MessageHandler.EVENT_RESET_PASSWORD_FAIL;
+                    message.obj = result.getMessage();
+                }
                 handler.sendMessage(message);
             }
-        }.start();
+            @Override
+            public void onFail(String msg) {
+                Message message = new Message();
+                message.what = MessageHandler.EVENT_RESET_PASSWORD_FAIL;
+                message.obj = msg;
+                handler.sendMessage(message);
+            }
+        });
     }
 
 }

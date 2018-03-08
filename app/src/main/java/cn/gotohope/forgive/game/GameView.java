@@ -19,6 +19,7 @@ import com.xinsane.util.LogUtil;
 import java.util.Random;
 
 import cn.gotohope.forgive.data.Game;
+import cn.gotohope.forgive.user.UserManager;
 
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
 
@@ -280,6 +281,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             Intent intent = new Intent();
             intent.putExtra("best", max_score);
             ((Activity) getContext()).setResult(Activity.RESULT_OK, intent);
+            UserManager.uploadScore(game, max_score, null);
         }
     }
 
