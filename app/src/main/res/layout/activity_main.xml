@@ -7,12 +7,11 @@
     android:orientation="vertical"
     tools:context="cn.gotohope.forgive.main.MainActivity">
 
-    <FrameLayout
+    <android.support.v4.view.ViewPager
         android:id="@+id/main_content"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
-    </FrameLayout>
+        android:layout_weight="1" />
 
     <android.support.design.widget.BottomNavigationView
         xmlns:android="http://schemas.android.com/apk/res/android"

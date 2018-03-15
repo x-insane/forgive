@@ -46,10 +46,6 @@ public class GameListFragment extends Fragment {
         recyclerView.setLayoutManager(layoutManager);
         adapter = new GameListAdapter(list, this);
         recyclerView.setAdapter(adapter);
-
-//        Toolbar toolbar = getView().findViewById(R.id.game_list_toolbar);
-//        toolbar.setTitle("基本游戏关卡");
-//        toolbar.setTitleTextColor(0xffffffff);
     }
 
     @Override

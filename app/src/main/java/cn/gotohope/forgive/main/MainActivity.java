@@ -5,10 +5,16 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.view.PagerAdapter;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
+
+import com.xinsane.util.LogUtil;
 
 import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.main.account.AccountFragment;
@@ -19,18 +25,12 @@ import cn.gotohope.forgive.user.UserManager;
 
 public class MainActivity extends AppCompatActivity {
 
+    private ViewPager viewPager;
     private AccountFragment accountFragment = new AccountFragment();
     private GameListFragment gameListFragment = new GameListFragment();
     private ChallengeFragment challengeFragment = new ChallengeFragment();
 
     public BottomNavigationView navigation;
-
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1 && resultCode == RESULT_OK)
-            navigation.setSelectedItemId(R.id.navigation_account);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,34 +40,42 @@ public class MainActivity extends AppCompatActivity {
         navigation.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                switch (item.getItemId()) {
-                    case R.id.navigation_account: {
-                        if (!UserManager.isLogin()) {
-                            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                            startActivityForResult(intent, 1);
-                            return false;
-                        }
-                        replaceContent(accountFragment);
-                        break;
-                    }
-                    case R.id.navigation_challenge:
-                        replaceContent(challengeFragment);
-                        break;
-                    case R.id.navigation_game_list:
-                        replaceContent(gameListFragment);
-                        break;
-                }
+                viewPager.setCurrentItem(item.getOrder());
                 return true;
             }
         });
-        replaceContent(gameListFragment);
-    }
-
-    private void replaceContent(Fragment fragment) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        FragmentTransaction transaction = fragmentManager.beginTransaction();
-        transaction.replace(R.id.main_content, fragment);
-        transaction.commit();
+        viewPager = findViewById(R.id.main_content);
+        viewPager.addOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+            }
+            @Override
+            public void onPageSelected(int position) {
+                navigation.getMenu().getItem(position).setChecked(true);
+            }
+            @Override
+            public void onPageScrollStateChanged(int state) {
+            }
+        });
+        viewPager.setAdapter(new FragmentPagerAdapter(getSupportFragmentManager()) {
+            @Override
+            public Fragment getItem(int position) {
+                LogUtil.d(String.valueOf(getItemId(position)));
+                switch ((int) getItemId(position)) {
+                    case 0:
+                        return gameListFragment;
+                    case 1:
+                        return challengeFragment;
+                    case 2:
+                        return accountFragment;
+                }
+                return null;
+            }
+            @Override
+            public int getCount() {
+                return 3;
+            }
+        });
     }
 
 }

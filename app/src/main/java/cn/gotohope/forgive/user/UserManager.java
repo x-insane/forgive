@@ -10,10 +10,6 @@ import com.google.gson.JsonObject;
 import com.xinsane.util.HttpApi;
 import com.xinsane.util.LogUtil;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 import cn.gotohope.forgive.App;
 import cn.gotohope.forgive.Config;
 import cn.gotohope.forgive.data.Game;
@@ -28,25 +24,9 @@ public class UserManager {
     private static User user = null;
 
     public static final class User {
-
-        private String nickname;
-        public String getNickname() {
-            return nickname;
-        }
-
-        public static void syncScore(JsonArray data) {
-            SharedPreferences.Editor editor = App.getContext()
-                    .getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear();
-            for (JsonElement item : data) {
-                JsonObject obj = item.getAsJsonObject();
-                String game_id = obj.get("game_id").getAsString();
-                int score = obj.get("score").getAsInt();
-                editor.putInt(game_id, score);
-            }
-            editor.apply();
-            GameListFragment.freshList();
-        }
-
+        public String phone = "";
+        public String nickname = "";
+        public String description = "";
     }
 
     public static boolean isLogin() {
@@ -55,6 +35,19 @@ public class UserManager {
 
     public static User getUser() {
         return user;
+    }
+
+    private static void syncScore(JsonArray data) {
+        SharedPreferences.Editor editor = App.getContext()
+                .getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear();
+        for (JsonElement item : data) {
+            JsonObject obj = item.getAsJsonObject();
+            String game_id = obj.get("game_id").getAsString();
+            int score = obj.get("score").getAsInt();
+            editor.putInt(game_id, score);
+        }
+        editor.apply();
+        GameListFragment.freshList();
     }
 
     public static void login(final String phone, final String password, HttpApi.Listener listener) {
@@ -73,7 +66,7 @@ public class UserManager {
                         editor.apply();
                         Gson gson = new Gson();
                         user = gson.fromJson(result.getData().get("user").getAsJsonObject(), User.class);
-                        User.syncScore(result.getData().get("data").getAsJsonArray());
+                        syncScore(result.getData().get("data").getAsJsonArray());
                     }
                 }
             })
@@ -121,6 +114,23 @@ public class UserManager {
             .add("name", game.getName())
             .add("score", String.valueOf(score))
             .addListener(listener)
+            .post();
+    }
+
+    public static void modifyUser(String nickname, String description, HttpApi.Listener listener) {
+        new HttpApi(Config.api_address + "/android/modify_user")
+            .add("nickname", nickname)
+            .add("description", description)
+            .addListener(listener)
+            .addListener(new HttpApi.Listener() {
+                @Override
+                public void onResult(HttpApi.Result result) {
+                    if (result.isSuccess()) {
+                        Gson gson = new Gson();
+                        user = gson.fromJson(result.getData().get("user").getAsJsonObject(), User.class);
+                    }
+                }
+            })
             .post();
     }
 
