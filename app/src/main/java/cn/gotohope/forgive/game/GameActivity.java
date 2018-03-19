@@ -8,13 +8,23 @@ import cn.gotohope.forgive.data.Game;
 
 public class GameActivity extends AppCompatActivity {
 
-    public Game game;
+    private GameView gameView;
+    private Game game;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         game = (Game) getIntent().getSerializableExtra("game");
         setContentView(R.layout.activity_game);
+        gameView = findViewById(R.id.game_view);
     }
+
+    @Override
+    public void onBackPressed() {
+        if (gameView.onBackPressed())
+            super.onBackPressed();
+    }
+
+    public Game getGame() { return game; }
 
 }

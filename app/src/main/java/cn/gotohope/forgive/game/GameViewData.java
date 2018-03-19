@@ -4,11 +4,7 @@ import java.util.Random;
 
 import cn.gotohope.forgive.data.Game;
 
-/**
- * Created by xinsane on 2018/2/28.
- */
-
-public class GameViewData {
+class GameViewData {
 
     private Random rand = new Random(System.currentTimeMillis());
 
@@ -23,25 +19,25 @@ public class GameViewData {
     private int wrong_x = 0, wrong_y = 0;
     private int wrong_step = 0;
 
-    public GameViewData(Game game) {
+    GameViewData(Game game) {
         this.game = game;
-        loop = game.row_number() * 2 + 1;
+        loop = game.row_number * 2 + 1;
         data = new int[loop];
     }
 
-    public int get(int i) {
+    int get(int i) {
         i %= loop;
         if (i == (step + 1) % loop) {
-            data[i] = rand.nextInt(game.column_number()) + 1;
+            data[i] = rand.nextInt(game.column_number) + 1;
             int last = i > 0 ? i - 1 : loop - 1;
             while (data[i] == data[last])
-                data[i] = rand.nextInt(game.column_number()) + 1;
+                data[i] = rand.nextInt(game.column_number) + 1;
             step ++;
         }
         return data[i];
     }
 
-    public boolean set(int i) {
+    boolean set(int i) {
         i %= loop;
         int last = i > 0 ? i - 1 : loop - 1;
         if (data[last] == 0) {
@@ -52,28 +48,28 @@ public class GameViewData {
         return false;
     }
 
-    public void wrong(int step) {
+    void wrong(int step) {
         wrong_step = step;
     }
 
-    public void wrong(int x, int y) {
+    void wrong(int x, int y) {
         wrong_x = x;
         wrong_y = y;
     }
 
-    public int score() {
+    int score() {
         return score;
     }
 
-    public int get_wrong_x() {
+    int get_wrong_x() {
         return wrong_x;
     }
 
-    public int get_wrong_y() {
+    int get_wrong_y() {
         return wrong_y;
     }
 
-    public int get_wrong_step() {
+    int get_wrong_step() {
         return wrong_step;
     }
 

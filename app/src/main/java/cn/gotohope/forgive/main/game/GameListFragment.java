@@ -1,5 +1,6 @@
 package cn.gotohope.forgive.main.game;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -24,6 +25,7 @@ import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.data.Game;
 import cn.gotohope.forgive.util.FileManager;
 
+@SuppressLint("SetTextI18n")
 public class GameListFragment extends Fragment {
 
     private static List<Game> list;
@@ -41,8 +43,8 @@ public class GameListFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
         if (list == null)
             loadGames();
-        recyclerView = getView().findViewById(R.id.game_list_recycler_view);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(getView().getContext());
+        recyclerView = view.findViewById(R.id.game_list_recycler_view);
+        LinearLayoutManager layoutManager = new LinearLayoutManager(view.getContext());
         recyclerView.setLayoutManager(layoutManager);
         adapter = new GameListAdapter(list, this);
         recyclerView.setAdapter(adapter);
@@ -60,14 +62,12 @@ public class GameListFragment extends Fragment {
     private static void loadGames() {
         list = new ArrayList<>();
         String json = FileManager.readAsset(App.getContext(), "game_list.json");
-        if (json == null)
-            return;
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
         JsonArray data = parser.parse(json).getAsJsonArray();
         for (JsonElement e : data) {
             Game item = gson.fromJson(e, Game.class);
-            item.best = App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(item.getId(), 0);
+            item.best = App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(item.id, 0);
             list.add(item);
         }
     }

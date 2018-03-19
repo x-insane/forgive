@@ -110,8 +110,8 @@ public class UserManager {
     public static void uploadScore(Game game, int score, HttpApi.Listener listener) {
         new HttpApi(Config.api_address + "/android/upload_score")
             .add("token", Config.upload_score_token)
-            .add("game", game.getId())
-            .add("name", game.getName())
+            .add("game", game.id)
+            .add("name", game.name)
             .add("score", String.valueOf(score))
             .addListener(listener)
             .post();
