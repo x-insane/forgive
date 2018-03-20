@@ -6,23 +6,28 @@ import cn.gotohope.forgive.data.Game;
 
 class GameViewData {
 
-    private Random rand = new Random(System.currentTimeMillis());
+    private GameListener listener;
+    public interface GameListener {
+        void onScore();
+        void onForgive();
+        void onStep(int x, int y);
+    }
 
+    private Random rand = new Random(System.currentTimeMillis());
     private Game game;
 
     private final int loop;
     private int step = -1;
     private final int[] data;
 
-    private int score = 0;
-
     private int wrong_x = 0, wrong_y = 0;
     private int wrong_step = 0;
 
-    GameViewData(Game game) {
+    GameViewData(Game game, GameListener listener) {
         this.game = game;
         loop = game.row_number * 2 + 1;
         data = new int[loop];
+        this.listener = listener;
     }
 
     int get(int i) {
@@ -30,19 +35,25 @@ class GameViewData {
         if (i == (step + 1) % loop) {
             data[i] = rand.nextInt(game.column_number) + 1;
             int last = i > 0 ? i - 1 : loop - 1;
-            while (data[i] == data[last])
+            while (data[i] == Math.abs(data[last]))
                 data[i] = rand.nextInt(game.column_number) + 1;
+            if (data[last] > 0 && rand.nextInt(game.forgive_bound) == 0)
+                data[i] = -data[i];
             step ++;
         }
         return data[i];
     }
 
-    boolean set(int i) {
-        i %= loop;
+    boolean set(int y) {
+        int i = y % loop;
         int last = i > 0 ? i - 1 : loop - 1;
-        if (data[last] == 0) {
+        int last_last = last > 0 ? last -1 : loop - 1;
+        if (data[last] == 0 || (data[last] < 0 && data[last_last] == 0)) {
+            if (data[i] < 0)
+                listener.onForgive();
+            listener.onScore();
+            listener.onStep(Math.abs(data[i]), y);
             data[i] = 0;
-            score ++;
             return true;
         }
         return false;
@@ -55,10 +66,6 @@ class GameViewData {
     void wrong(int x, int y) {
         wrong_x = x;
         wrong_y = y;
-    }
-
-    int score() {
-        return score;
     }
 
     int get_wrong_x() {

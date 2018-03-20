@@ -13,14 +13,11 @@ import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
-import android.widget.Button;
-import android.widget.Toast;
 
 import com.xinsane.util.LogUtil;
 
@@ -28,7 +25,7 @@ import cn.gotohope.forgive.data.Game;
 import cn.gotohope.forgive.user.UserManager;
 
 @SuppressLint("DefaultLocale")
-public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable {
+public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable, GameViewData.GameListener {
 
     private boolean isRunning;
     private boolean isStart;
@@ -51,10 +48,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private double fps = 0.0;
     private double p_x = 0.0, p_y = 0.0;
 
+    private int score = 0;
+    private int forgive = 0;
+
+    private GameForgive last_forgive = null;
+    private int forgive_time = 0;
+    private int last_x = 0, last_y = 0;
+
     private void init() {
         parent = (GameActivity) getContext();
         game = parent.getGame();
-        data = new GameViewData(game);
+        data = new GameViewData(game, this);
         if (game.auto_scroll) {
             a = game.a;
             v = game.v;
@@ -88,7 +92,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                 p_x = motionEvent.getX();
                 p_y = motionEvent.getY();
 
-                if (data.get(y) == x) {
+                if (Math.abs(data.get(y)) == x) {
                     if (data.set(y)) {
                         if (isPause)
                             isPause = false;
@@ -102,7 +106,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     double helper_down = 0.3;
                     int y2 = (int) (Y - helper_up);
                     for (int o = y2; o < y; ++ o) {
-                        if (data.get(o) == x) {
+                        if (Math.abs(data.get(o)) == x) {
                             if (data.set(o)) {
                                 onStep();
                                 LogUtil.d(String.format("(%d, %d), ok fix up", x, o));
@@ -114,7 +118,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     }
                     y2 = (int) (Y + helper_down);
                     for (int o = y2; o < y; ++ o) {
-                        if (data.get(o) == x) {
+                        if (Math.abs(data.get(o)) == x) {
                             if (data.set(o)) {
                                 onStep();
                                 LogUtil.d(String.format("(%d, %d), ok fix down", x, o));
@@ -160,8 +164,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 
     @Override
     public void run() {
-        long last = System.currentTimeMillis();
+        long last = System.currentTimeMillis() - 20;
         while (isRunning) {
+            long now = System.currentTimeMillis();
+            fps = 1000.0 / (now - last);
             if (!isOver && !isPause) {
                 isStart = true;
                 if (game.auto_scroll) {
@@ -189,20 +195,26 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     }
                 }
                 int offsetY = (int) offset;
-                if (offsetY > 0 && data.get(offsetY-1) != 0) {
+                if (offsetY > 0 && data.get(offsetY-1) > 0) {
                     data.wrong(offsetY-1);
                     isOver = true;
                     offset = offsetY - 1;
                 }
+                if (forgive_time > 0) {
+                    if (forgive_time > now - last)
+                        forgive_time -= now - last;
+                    else {
+                        forgive_time = 0;
+                        last_forgive = null;
+                    }
+                }
             }
-            long now = System.currentTimeMillis();
-            fps = 1000.0 / (now - last);
-            last = now;
             draw();
             if (isOver && !isSave) {
                 isSave = true;
                 save();
             }
+            last = now;
         }
     }
 
@@ -244,11 +256,19 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         int cy = game.row_number;
 
         // Tiles
-        paint.setColor(Color.BLACK);
         for (int j = offsetY;j < offsetY + cy + 1; ++j) {
             if (j < 0)
                 continue;
             int index = data.get(j);
+            boolean is_forgive = false;
+            if (index < 0) {
+                index = -index;
+                is_forgive = true;
+            }
+            if (is_forgive)
+                paint.setColor(Color.GREEN);
+            else
+                paint.setColor(Color.BLACK);
             for (int i = 0;i < cx; ++i) {
                 if (i + 1 == index)
                     drawTile(canvas, i, j, cx, cy, paint);
@@ -279,6 +299,10 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Wrong Tile
         int wrong_x = data.get_wrong_x();
         int wrong_y = data.get_wrong_y();
+        if (last_forgive == GameForgive.GAME_OVER) {
+            wrong_x = last_x;
+            wrong_y = last_y;
+        }
         if (wrong_y > 0) {
             paint.setColor(Color.RED);
             drawTile(canvas, wrong_x - 1, wrong_y, cx, cy, paint);
@@ -287,7 +311,28 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         // Score
         paint.setColor(Color.RED);
         paint.setTextSize(108);
-        canvas.drawText(String.valueOf(data.score()), 50, 150, paint);
+        canvas.drawText(String.valueOf(score), 80, 150, paint);
+
+        // Forgive
+        if (forgive > 0) {
+            paint.setColor(0xff11aa11);
+            paint.setTextSize(108);
+            float w = width - 130;
+            if (forgive > 9)
+                w -= 60;
+            if (forgive > 99)
+                w -= 60;
+            canvas.drawText(String.valueOf(forgive), w, 150, paint);
+        }
+
+        // Forgive Text
+        if (forgive_time > 0) {
+            paint.setColor(Color.RED);
+            paint.setTextSize(60 + forgive_time / 10);
+            String forgive_text = last_forgive.toString();
+            float w = paint.measureText(forgive_text);
+            canvas.drawText(forgive_text, (width - w) / 2, 250 + forgive_time / 10, paint);
+        }
 
         // Debug v/a & fps
 //        paint.setColor(Color.RED);
@@ -296,7 +341,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
 //        canvas.drawText(text, 65, 50, paint);
 
         // Debug last wrong point
-        if (wrong_y > 0) {
+        if (data.get_wrong_y() > 0) {
             paint.setColor(Color.BLUE);
             canvas.drawCircle((float) p_x, (float) p_y, 15, paint);
         }
@@ -304,14 +349,57 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         holder.unlockCanvasAndPost(canvas);
     }
 
+    @Override
+    public void onScore() {
+        score ++;
+    }
+
+    @Override
+    public void onForgive() {
+        forgive ++;
+        last_forgive = GameForgive.choose();
+        forgive_time = 500;
+        switch (last_forgive) {
+            case NOTHING:
+                break;
+            case SPEED_DOWN:
+                v *= 0.9;
+                break;
+            case SCORE_ADD_5:
+                score += 5;
+                break;
+            case SCORE_ADD_10:
+                score += 10;
+                break;
+            case SCORE_ADD_20:
+                score += 20;
+                break;
+            case SCORE_ADD_100:
+                score += 100;
+                break;
+            case SPEED_UP:
+                v *= 1.1;
+                break;
+            case GAME_OVER:
+                isOver = true;
+                break;
+        }
+    }
+
+    @Override
+    public void onStep(int x, int y) {
+        last_x = x;
+        last_y = y;
+    }
+
     private void save() {
         Message message = new Message();
         message.what = MessageHandler.EVENT_GAME_OVER;
-        message.arg1 = data.score();
+        message.arg1 = score;
         message.arg2 = max_score;
         handler.sendMessage(message);
-        if (data.score() > max_score) {
-            max_score = data.score();
+        if (score > max_score) {
+            max_score = score;
             SharedPreferences.Editor editor = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit();
             editor.putInt(game.id, max_score);
             editor.apply();
@@ -360,12 +448,20 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     int old_max = msg.arg2;
                     new AlertDialog.Builder(gameView.parent).setTitle("游戏已结束")
                         .setMessage("你的分数为：" + my_score + " !\n" +
-                                (my_score > old_max ? "恭喜你创造了新的记录！" : "最高分为：" + old_max + "，继续加油吧"))
-                        .setCancelable(true)
+                            (my_score > old_max ? "恭喜你创造了新的记录！" : "最高分为：" + old_max + "，继续加油吧") +
+                            (gameView.forgive > 0 ? "\n你一共原谅了" + gameView.forgive + "次 ^_^" : "")
+                        )
+                        .setCancelable(false)
                         .setPositiveButton("返回主菜单", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialogInterface, int i) {
                                 gameView.parent.finish();
+                            }
+                        })
+                        .setNegativeButton("死亡回放", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                dialogInterface.dismiss();
                             }
                         }).show();
                     break;

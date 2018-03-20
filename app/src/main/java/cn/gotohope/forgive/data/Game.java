@@ -10,6 +10,7 @@ public class Game implements Serializable {
 
     public String id;
     public String name;
+    public int forgive_bound = 10;
     public String description = "";
 
     public double a = 0.00004;

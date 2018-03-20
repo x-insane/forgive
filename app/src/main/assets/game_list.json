@@ -6,7 +6,7 @@
   },
   {
     "id": "dj8a8d",
-    "name": "密集5*6",
+    "name": "密集块",
     "column_number": 5,
     "row_number": 6,
     "description": "你将在六行五列中体验不一样的游戏"
@@ -17,6 +17,12 @@
     "a": 0.0001,
     "v": 0.09,
     "description": "准备好狂野一把了吗"
+  },
+  {
+    "id": "d6e15n",
+    "name": "原谅块",
+    "forgive_bound": 2,
+    "description": "一大波原谅块即将来临……"
   },
   {
     "id": "9y9z9o",
