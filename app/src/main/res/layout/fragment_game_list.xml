@@ -12,7 +12,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="原谅块关卡列表"
+            android:text="@string/title_game_list"
             android:textColor="@color/colorPrimary"
             android:textSize="20sp"/>
     </android.support.v7.widget.Toolbar>

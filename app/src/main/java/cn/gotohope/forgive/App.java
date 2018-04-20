@@ -31,16 +31,16 @@ public class App extends Application {
     public void onCreate() {
         super.onCreate();
         context = getApplicationContext();
-        attemptLogin();
+        attemptLogin(null);
     }
 
-    private void attemptLogin() {
+    public static void attemptLogin(HttpApi.Listener listener) {
         SharedPreferences preferences = App.getContext().getSharedPreferences("user", Context.MODE_PRIVATE);
         String phone = preferences.getString("phone", "");
         String password = preferences.getString("password", "");
         if (phone.isEmpty() || password.isEmpty())
             return;
-        UserManager.login(phone, password, null);
+        UserManager.login(phone, password, listener);
     }
 
 }

@@ -3,6 +3,7 @@ package cn.gotohope.forgive.main.game;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
@@ -28,9 +29,8 @@ import cn.gotohope.forgive.util.FileManager;
 @SuppressLint("SetTextI18n")
 public class GameListFragment extends Fragment {
 
-    private static List<Game> list;
+    private static List<Game> list = new ArrayList<>();;
     private static GameListAdapter adapter;
-    private RecyclerView recyclerView;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -41,9 +41,8 @@ public class GameListFragment extends Fragment {
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        if (list == null)
-            loadGames();
-        recyclerView = view.findViewById(R.id.game_list_recycler_view);
+        loadGames();
+        RecyclerView recyclerView = view.findViewById(R.id.game_list_recycler_view);
         LinearLayoutManager layoutManager = new LinearLayoutManager(view.getContext());
         recyclerView.setLayoutManager(layoutManager);
         adapter = new GameListAdapter(list, this);
@@ -55,19 +54,22 @@ public class GameListFragment extends Fragment {
         super.onActivityResult(requestCode, resultCode, data);
         if (data == null)
             return;
-        GameListAdapter.ViewHolder holder = (GameListAdapter.ViewHolder) recyclerView.findViewHolderForAdapterPosition(requestCode);
-        holder.gameBest.setText("Best: " + data.getIntExtra("best", 0));
+        Game game = list.get(requestCode);
+        game.best = data.getIntExtra("best", 0);
+        game.time = data.getIntExtra("time", 0);
+        adapter.notifyItemChanged(requestCode);
     }
 
     private static void loadGames() {
-        list = new ArrayList<>();
+        list.clear();
         String json = FileManager.readAsset(App.getContext(), "game_list.json");
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
         JsonArray data = parser.parse(json).getAsJsonArray();
+        SharedPreferences preference = App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE);
         for (JsonElement e : data) {
             Game item = gson.fromJson(e, Game.class);
-            item.best = App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(item.id, 0);
+            item.best = preference.getInt(item.id, 0);
             list.add(item);
         }
     }

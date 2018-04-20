@@ -1,0 +1,26 @@
+[
+  {
+    "type": "challenge",
+    "has_forgive_till": false,
+    "id": "o34wbf",
+    "name": "新手级",
+    "a": 0.00004,
+    "v": 0.06
+  },
+  {
+    "type": "challenge",
+    "has_forgive_till": false,
+    "id": "380fnh",
+    "name": "高手级",
+    "a": 0.00007,
+    "v": 0.08
+  },
+  {
+    "type": "challenge",
+    "has_forgive_till": false,
+    "id": "r1xtrm",
+    "name": "大师级",
+    "a": 0.00009,
+    "v": 0.092
+  }
+]

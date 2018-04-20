@@ -1,6 +1,5 @@
-package cn.gotohope.forgive.main.game;
+package cn.gotohope.forgive.main.challenge;
 
-import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.RecyclerView;
@@ -15,21 +14,20 @@ import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.data.Game;
 import cn.gotohope.forgive.game.GameActivity;
 
-@SuppressLint("SetTextI18n")
-public class GameListAdapter extends RecyclerView.Adapter<GameListAdapter.ViewHolder> {
-
+public class ChallengeAdapter extends RecyclerView.Adapter<ChallengeAdapter.ViewHolder> {
+    
     private List<Game> list;
-    private Fragment fragment; // context of GameListFragment
+    private Fragment fragment; // context of ChallengeFragment
 
-    GameListAdapter(List<Game> list, Fragment context) {
+    ChallengeAdapter(List<Game> list, Fragment context) {
         this.list = list;
         fragment = context;
     }
 
     @Override
-    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.game_list_item, parent, false);
-        final ViewHolder holder = new ViewHolder(view);
+    public ChallengeAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.challenge_item, parent, false);
+        final ChallengeAdapter.ViewHolder holder = new ChallengeAdapter.ViewHolder(view);
         view.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -43,12 +41,12 @@ public class GameListAdapter extends RecyclerView.Adapter<GameListAdapter.ViewHo
     }
 
     @Override
-    public void onBindViewHolder(final ViewHolder holder, final int position) {
+    public void onBindViewHolder(final ChallengeAdapter.ViewHolder holder, final int position) {
         Game item = list.get(position);
         holder.gameId.setText(String.valueOf(position + 1));
         holder.gameName.setText(item.name);
-        if (list.get(position).best > 0)
-            holder.gameBest.setText("Best: " + list.get(position).best);
+        if (list.get(position).best_v > 0)
+            holder.gameBest.setText(String.format("Best: %.3f tills/s", list.get(position).best_v));
         else
             holder.gameBest.setText("");
     }
@@ -65,9 +63,9 @@ public class GameListAdapter extends RecyclerView.Adapter<GameListAdapter.ViewHo
 
         ViewHolder(View view) {
             super(view);
-            gameName = view.findViewById(R.id.game_list_item_name);
-            gameId = view.findViewById(R.id.game_list_item_id);
-            gameBest = view.findViewById(R.id.game_list_item_best);
+            gameName = view.findViewById(R.id.challenge_item_name);
+            gameId = view.findViewById(R.id.challenge_item_id);
+            gameBest = view.findViewById(R.id.challenge_item_best);
         }
 
     }

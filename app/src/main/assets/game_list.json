@@ -26,29 +26,37 @@
   },
   {
     "id": "9y9z9o",
-    "name": "经典模式",
+    "name": "经典模式30秒",
+    "time_limit": 30,
     "auto_scroll": false,
+    "has_forgive_till": false,
     "description": "在经典模式中体验经典的味道"
   },
   {
     "id": "fu3xaa",
-    "name": "经典模式(快)",
+    "name": "经典模式30秒(快)",
+    "time_limit": 30,
     "auto_scroll": false,
     "scroll_v": 0.2,
+    "has_forgive_till": false,
     "description": "如果你手速够快这将更适合你"
   },
   {
     "id": "j50dd2",
-    "name": "经典模式(慢)",
+    "name": "经典模式30秒(慢)",
+    "time_limit": 30,
     "auto_scroll": false,
     "scroll_v": 0.1,
+    "has_forgive_till": false,
     "description": "如果只想过把瘾来试试这个吧"
   },
   {
     "id": "7hd2h4",
-    "name": "经典模式(瞬间)",
+    "name": "经典模式30秒(瞬间)",
+    "time_limit": 30,
     "auto_scroll": false,
     "scroll_v": 1.0,
+    "has_forgive_till": false,
     "description": "我在哪里？我从哪里来？"
   }
 ]

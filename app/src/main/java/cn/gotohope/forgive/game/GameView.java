@@ -41,15 +41,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private GameActivity parent;
     private Game game;
     private GameViewData data;
-    private int max_score;
+    private int max_score; // 从max_score文件中读出的最高分，默认0
+    private float max_velocity; // 从max_velocity文件中读出的最快速度，默认0
 
-    private double a, v;
+    private float a, v;
 
     private double fps = 0.0;
     private double p_x = 0.0, p_y = 0.0;
 
     private int score = 0;
     private int forgive = 0;
+    private int game_time = 0;
 
     private GameForgive last_forgive = null;
     private int forgive_time = 0;
@@ -63,11 +65,12 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             a = game.a;
             v = game.v;
         } else {
-            a = 0.0;
-            v = 0.0;
+            a = 0.0f;
+            v = 0.0f;
         }
 
         max_score = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).getInt(game.id, 0);
+        max_velocity = getContext().getSharedPreferences("max_velocity", Context.MODE_PRIVATE).getFloat(game.id, 0);
 
         holder = getHolder();
         holder.addCallback(this);
@@ -106,6 +109,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     double helper_down = 0.3;
                     int y2 = (int) (Y - helper_up);
                     for (int o = y2; o < y; ++ o) {
+                        if (o < 0)
+                            continue;
                         if (Math.abs(data.get(o)) == x) {
                             if (data.set(o)) {
                                 onStep();
@@ -167,18 +172,21 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         long last = System.currentTimeMillis() - 20;
         while (isRunning) {
             long now = System.currentTimeMillis();
+            long period = now - last;
             fps = 1000.0 / (now - last);
             if (!isOver && !isPause) {
+                if (fps < 45)
+                    LogUtil.d("fps: " + (int) fps, "LOW_FPS_WARNING");
                 isStart = true;
                 if (game.auto_scroll) {
                     offset += v;
                     v += a;
                     if (v >= 0.095 && v < 0.095 + a) {
-                        v = 0.095 + a;
+                        v = 0.095f + a;
                         a /= 2;
                     }
                     if (v >= 0.11 && v < 0.11 + a) {
-                        v = 0.11 + a;
+                        v = 0.11f + a;
                         a /= 2;
                     }
                     if (v > 0.115)
@@ -190,7 +198,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                         scroll -= v;
                     } else {
                         offset += scroll;
-                        v = 0.0;
+                        v = 0.0f;
                         scroll = 0.0;
                     }
                 }
@@ -201,12 +209,17 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                     offset = offsetY - 1;
                 }
                 if (forgive_time > 0) {
-                    if (forgive_time > now - last)
-                        forgive_time -= now - last;
+                    if (forgive_time > period)
+                        forgive_time -= period;
                     else {
                         forgive_time = 0;
                         last_forgive = null;
                     }
+                }
+                game_time += period;
+                if (game.time_limit > 0) {
+                    if (game_time >= game.time_limit * 1000)
+                        isOver = true;
                 }
             }
             draw();
@@ -290,7 +303,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         }
 
         // Miss Tile
-        int wrong_step = data.get_wrong_step();
+        int wrong_step = data.get_missing_till();
         if (wrong_step > 0) {
             paint.setColor(0xffffa500);
             drawTile(canvas, data.get(wrong_step)-1, wrong_step, cx, cy, paint);
@@ -303,15 +316,23 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             wrong_x = last_x;
             wrong_y = last_y;
         }
-        if (wrong_y > 0) {
+        if (wrong_y >= 0) {
             paint.setColor(Color.RED);
             drawTile(canvas, wrong_x - 1, wrong_y, cx, cy, paint);
         }
 
-        // Score
-        paint.setColor(Color.RED);
-        paint.setTextSize(108);
-        canvas.drawText(String.valueOf(score), 80, 150, paint);
+        if (game.type.equals("challenge")) {
+            // Velocity
+            paint.setColor(Color.RED);
+            paint.setTextSize(92);
+            canvas.drawText(String.format("%.3f tills/s", v), 80, 150, paint);
+        } else {
+            // Score
+            paint.setColor(Color.RED);
+            paint.setTextSize(108);
+            canvas.drawText(String.valueOf(score), 80, 150, paint);
+        }
+
 
         // Forgive
         if (forgive > 0) {
@@ -334,11 +355,25 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             canvas.drawText(forgive_text, (width - w) / 2, 250 + forgive_time / 10, paint);
         }
 
+        // Time Limit Text
+        if (game.time_limit > 0) {
+            double time_limit = game.time_limit - game_time / 1000.0;
+            if (time_limit < 0)
+                time_limit = 0;
+            if (time_limit < 5)
+                paint.setColor(Color.RED);
+            else
+                paint.setColor(0xff11aa11);
+            paint.setTextSize(95);
+            canvas.drawText(String.format("%.1f", time_limit), width - 250, 150, paint);
+        }
+
         // Debug v/a & fps
 //        paint.setColor(Color.RED);
 //        paint.setTextSize(36);
 //        String text = String.format("v: %.4f     50a: %.6f     fps: %d", v, a*50, (int) fps);
 //        canvas.drawText(text, 65, 50, paint);
+        fps = 0 + fps;
 
         // Debug last wrong point
         if (data.get_wrong_y() > 0) {
@@ -393,20 +428,38 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private void save() {
-        Message message = new Message();
-        message.what = MessageHandler.EVENT_GAME_OVER;
-        message.arg1 = score;
-        message.arg2 = max_score;
-        handler.sendMessage(message);
-        if (score > max_score) {
-            max_score = score;
-            SharedPreferences.Editor editor = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit();
-            editor.putInt(game.id, max_score);
-            editor.apply();
-            Intent intent = new Intent();
-            intent.putExtra("best", max_score);
-            parent.setResult(Activity.RESULT_OK, intent);
-            UserManager.uploadScore(game, max_score, null);
+        if (game.type.equals("challenge")) {
+            Message message = new Message();
+            message.what = MessageHandler.EVENT_GAME_OVER_FROM_CHALLENGE;
+            message.arg1 = (int) (v * 10000);
+            message.arg2 = (int) (max_velocity * 10000);
+            handler.sendMessage(message);
+            if (v > max_velocity) {
+                max_velocity = v;
+                SharedPreferences.Editor editor = getContext().getSharedPreferences("max_velocity", Context.MODE_PRIVATE).edit();
+                editor.putFloat(game.id, max_velocity);
+                editor.apply();
+                Intent intent = new Intent();
+                intent.putExtra("best", max_velocity);
+                parent.setResult(Activity.RESULT_OK, intent);
+                UserManager.uploadChallengeScore(game, max_velocity, null);
+            }
+        } else {
+            Message message = new Message();
+            message.what = MessageHandler.EVENT_GAME_OVER_FROM_GAME_LIST;
+            message.arg1 = score;
+            message.arg2 = max_score;
+            handler.sendMessage(message);
+            if (score > max_score) {
+                max_score = score;
+                SharedPreferences.Editor editor = getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit();
+                editor.putInt(game.id, max_score);
+                editor.apply();
+                Intent intent = new Intent();
+                intent.putExtra("best", max_score);
+                parent.setResult(Activity.RESULT_OK, intent);
+                UserManager.uploadScore(game, max_score, null);
+            }
         }
     }
 
@@ -433,7 +486,8 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     }
 
     private static class MessageHandler extends Handler {
-        static final int EVENT_GAME_OVER = 0x01;
+        static final int EVENT_GAME_OVER_FROM_GAME_LIST = 0x01;
+        static final int EVENT_GAME_OVER_FROM_CHALLENGE = 0x02;
 
         private GameView gameView;
         MessageHandler(GameView gameView) {
@@ -443,13 +497,15 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what) {
-                case EVENT_GAME_OVER:
+                case EVENT_GAME_OVER_FROM_GAME_LIST: {
                     int my_score = msg.arg1;
                     int old_max = msg.arg2;
-                    new AlertDialog.Builder(gameView.parent).setTitle("游戏已结束")
+                    int time_limit = gameView.game.time_limit * 1000;
+                    new AlertDialog.Builder(gameView.parent)
+                        .setTitle(time_limit > 0 && gameView.game_time >= time_limit ? "时间到" : "游戏已结束")
                         .setMessage("你的分数为：" + my_score + " !\n" +
-                            (my_score > old_max ? "恭喜你创造了新的记录！" : "最高分为：" + old_max + "，继续加油吧") +
-                            (gameView.forgive > 0 ? "\n你一共原谅了" + gameView.forgive + "次 ^_^" : "")
+                                (my_score > old_max ? "恭喜你创造了新的记录！" : "最高分为：" + old_max + "，继续加油吧") +
+                                (gameView.forgive > 0 ? "\n你一共原谅了" + gameView.forgive + "次 ^_^" : "")
                         )
                         .setCancelable(false)
                         .setPositiveButton("返回主菜单", new DialogInterface.OnClickListener() {
@@ -465,6 +521,34 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
                             }
                         }).show();
                     break;
+                }
+                case EVENT_GAME_OVER_FROM_CHALLENGE: {
+                    float my_velocity = msg.arg1 / 10000.0f;
+                    float old_max = msg.arg2 / 10000.0f;
+                    String my_velocity_str = String.format("%.3f tills/s", my_velocity);
+                    String old_max_str = String.format("%.3f tills/s", old_max);
+                    int time_limit = gameView.game.time_limit * 1000;
+                    new AlertDialog.Builder(gameView.parent)
+                        .setTitle(time_limit > 0 && gameView.game_time >= time_limit ? "时间到" : "游戏已结束")
+                        .setMessage("当前速度为：" + my_velocity_str + " !\n" +
+                                (my_velocity > old_max ? "恭喜你创造了新的记录！" : "你的历史最快纪录为：" + old_max_str + "，继续加油吧") +
+                                (gameView.forgive > 0 ? "\n你一共原谅了" + gameView.forgive + "次 ^_^" : "")
+                        )
+                        .setCancelable(false)
+                        .setPositiveButton("返回主菜单", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                gameView.parent.finish();
+                            }
+                        })
+                        .setNegativeButton("死亡回放", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                dialogInterface.dismiss();
+                            }
+                        }).show();
+                    break;
+                }
             }
         }
     }

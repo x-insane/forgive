@@ -1,5 +1,6 @@
 package cn.gotohope.forgive.user;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.SharedPreferences;
 
@@ -13,6 +14,7 @@ import com.xinsane.util.LogUtil;
 import cn.gotohope.forgive.App;
 import cn.gotohope.forgive.Config;
 import cn.gotohope.forgive.data.Game;
+import cn.gotohope.forgive.main.challenge.ChallengeFragment;
 import cn.gotohope.forgive.main.game.GameListFragment;
 
 
@@ -37,17 +39,28 @@ public class UserManager {
         return user;
     }
 
-    private static void syncScore(JsonArray data) {
-        SharedPreferences.Editor editor = App.getContext()
-                .getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear();
+    private static void syncScore(JsonArray data, boolean challenge) {
+        SharedPreferences.Editor editor;
+        if (challenge) {
+            editor = App.getContext()
+                    .getSharedPreferences("max_velocity", Context.MODE_PRIVATE).edit().clear();
+        } else {
+            editor = App.getContext()
+                    .getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear();
+        }
         for (JsonElement item : data) {
             JsonObject obj = item.getAsJsonObject();
             String game_id = obj.get("game_id").getAsString();
-            int score = obj.get("score").getAsInt();
-            editor.putInt(game_id, score);
+            if (obj.has("score") && !challenge)
+                editor.putInt(game_id, obj.get("score").getAsInt());
+            if (obj.has("velocity") && challenge)
+                editor.putFloat(game_id, obj.get("velocity").getAsFloat());
         }
         editor.apply();
-        GameListFragment.freshList();
+        if (challenge)
+            ChallengeFragment.freshList();
+        else
+            GameListFragment.freshList();
     }
 
     public static void login(final String phone, final String password, HttpApi.Listener listener) {
@@ -66,7 +79,9 @@ public class UserManager {
                         editor.apply();
                         Gson gson = new Gson();
                         user = gson.fromJson(result.getData().get("user").getAsJsonObject(), User.class);
-                        syncScore(result.getData().get("data").getAsJsonArray());
+                        JsonArray array = result.getData().get("data").getAsJsonArray();
+                        syncScore(array, false);
+                        syncScore(array, true);
                     }
                 }
             })
@@ -74,9 +89,11 @@ public class UserManager {
     }
     public static void logout() {
         App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear().apply();
+        App.getContext().getSharedPreferences("max_velocity", Context.MODE_PRIVATE).edit().clear().apply();
         App.getContext().getSharedPreferences("user", Context.MODE_PRIVATE).edit().clear().apply();
         user = null;
         GameListFragment.freshList();
+        ChallengeFragment.freshList();
     }
 
     public static void register(String phone, String password, String code, HttpApi.Listener listener) {
@@ -113,6 +130,19 @@ public class UserManager {
             .add("game", game.id)
             .add("name", game.name)
             .add("score", String.valueOf(score))
+            .addListener(listener)
+            .post();
+    }
+
+
+    @SuppressLint("DefaultLocale")
+    public static void uploadChallengeScore(Game game, float max_velocity, HttpApi.Listener listener) {
+        new HttpApi(Config.api_address + "/android/upload_score")
+            .add("type", "challenge")
+            .add("token", Config.upload_score_token)
+            .add("game", game.id)
+            .add("name", game.name)
+            .add("velocity", String.format("%.3f", max_velocity))
             .addListener(listener)
             .post();
     }

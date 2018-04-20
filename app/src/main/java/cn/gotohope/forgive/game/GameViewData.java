@@ -21,7 +21,7 @@ class GameViewData {
     private final int[] data;
 
     private int wrong_x = 0, wrong_y = 0;
-    private int wrong_step = 0;
+    private int missing_till = 0;
 
     GameViewData(Game game, GameListener listener) {
         this.game = game;
@@ -37,7 +37,7 @@ class GameViewData {
             int last = i > 0 ? i - 1 : loop - 1;
             while (data[i] == Math.abs(data[last]))
                 data[i] = rand.nextInt(game.column_number) + 1;
-            if (data[last] > 0 && rand.nextInt(game.forgive_bound) == 0)
+            if (game.has_forgive_till && data[last] > 0 && rand.nextInt(game.forgive_bound) == 0)
                 data[i] = -data[i];
             step ++;
         }
@@ -59,8 +59,8 @@ class GameViewData {
         return false;
     }
 
-    void wrong(int step) {
-        wrong_step = step;
+    void wrong(int missing_till) {
+        this.missing_till = missing_till;
     }
 
     void wrong(int x, int y) {
@@ -76,8 +76,8 @@ class GameViewData {
         return wrong_y;
     }
 
-    int get_wrong_step() {
-        return wrong_step;
+    int get_missing_till() {
+        return missing_till;
     }
 
 }
