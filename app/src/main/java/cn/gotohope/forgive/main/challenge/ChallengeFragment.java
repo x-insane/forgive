@@ -59,7 +59,7 @@ public class ChallengeFragment extends Fragment {
     }
 
     private static void loadChallenge() {
-        list.clear();
+        list = new ArrayList<>();
         String json = FileManager.readAsset(App.getContext(), "challenge.json");
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();

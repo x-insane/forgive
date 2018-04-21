@@ -61,7 +61,7 @@ public class GameListFragment extends Fragment {
     }
 
     private static void loadGames() {
-        list.clear();
+        list = new ArrayList<>();
         String json = FileManager.readAsset(App.getContext(), "game_list.json");
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();

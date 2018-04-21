@@ -27,6 +27,8 @@ import cn.gotohope.forgive.user.UserManager;
 @SuppressLint("DefaultLocale")
 public class GameView extends SurfaceView implements SurfaceHolder.Callback, Runnable, GameViewData.GameListener {
 
+    public static int VELOCITY_TIMES = 35;
+
     private boolean isRunning;
     private boolean isStart;
     private boolean isPause;
@@ -325,7 +327,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             // Velocity
             paint.setColor(Color.RED);
             paint.setTextSize(92);
-            canvas.drawText(String.format("%.3f tills/s", v), 80, 150, paint);
+            canvas.drawText(String.format("%.3f tills/s", v * VELOCITY_TIMES), 80, 150, paint);
         } else {
             // Score
             paint.setColor(Color.RED);
@@ -431,11 +433,11 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         if (game.type.equals("challenge")) {
             Message message = new Message();
             message.what = MessageHandler.EVENT_GAME_OVER_FROM_CHALLENGE;
-            message.arg1 = (int) (v * 10000);
+            message.arg1 = (int) (v * 10000 * VELOCITY_TIMES);
             message.arg2 = (int) (max_velocity * 10000);
             handler.sendMessage(message);
-            if (v > max_velocity) {
-                max_velocity = v;
+            if (v * VELOCITY_TIMES > max_velocity) {
+                max_velocity = v * VELOCITY_TIMES;
                 SharedPreferences.Editor editor = getContext().getSharedPreferences("max_velocity", Context.MODE_PRIVATE).edit();
                 editor.putFloat(game.id, max_velocity);
                 editor.apply();
