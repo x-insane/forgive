@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
@@ -24,13 +26,14 @@ import java.util.List;
 import cn.gotohope.forgive.App;
 import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.data.Game;
+import cn.gotohope.forgive.main.challenge.ChallengeFragment;
 import cn.gotohope.forgive.util.FileManager;
 
 @SuppressLint("SetTextI18n")
 public class GameListFragment extends Fragment {
 
-    private static List<Game> list = new ArrayList<>();;
-    private static GameListAdapter adapter;
+    private List<Game> list = new ArrayList<>();;
+    private GameListAdapter adapter;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -47,6 +50,13 @@ public class GameListFragment extends Fragment {
         recyclerView.setLayoutManager(layoutManager);
         adapter = new GameListAdapter(list, this);
         recyclerView.setAdapter(adapter);
+        handler = new MessageHandler(this);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        handler = null;
     }
 
     @Override
@@ -60,8 +70,8 @@ public class GameListFragment extends Fragment {
         adapter.notifyItemChanged(requestCode);
     }
 
-    private static void loadGames() {
-        list = new ArrayList<>();
+    public void loadGames() {
+        list.clear();
         String json = FileManager.readAsset(App.getContext(), "game_list.json");
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
@@ -75,9 +85,32 @@ public class GameListFragment extends Fragment {
     }
 
     public static void freshList() {
-        loadGames();
-        if (adapter != null)
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        if (handler != null) {
+            Message message = new Message();
+            message.what = MessageHandler.EVENT_FRESH_LIST;
+            handler.sendMessage(message);
+        }
+    }
+
+    private static MessageHandler handler;
+
+    static class MessageHandler extends Handler {
+        static final int EVENT_FRESH_LIST = 0x01;
+
+        private GameListFragment fragment;
+        MessageHandler(GameListFragment fragment) {
+            this.fragment = fragment;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_FRESH_LIST:
+                    fragment.loadGames();
+                    fragment.adapter.notifyDataSetChanged();
+                    break;
+            }
+        }
     }
 
 }

@@ -90,7 +90,7 @@ public class UserManager {
     public static void logout() {
         App.getContext().getSharedPreferences("max_score", Context.MODE_PRIVATE).edit().clear().apply();
         App.getContext().getSharedPreferences("max_velocity", Context.MODE_PRIVATE).edit().clear().apply();
-        App.getContext().getSharedPreferences("user", Context.MODE_PRIVATE).edit().clear().apply();
+        App.getContext().getSharedPreferences("user", Context.MODE_PRIVATE).edit().remove("password").apply();
         user = null;
         GameListFragment.freshList();
         ChallengeFragment.freshList();

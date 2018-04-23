@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
@@ -16,7 +18,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
-import com.xinsane.util.LogUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +29,8 @@ import cn.gotohope.forgive.util.FileManager;
 
 public class ChallengeFragment extends Fragment {
 
-    private static List<Game> list = new ArrayList<>();
-    private static ChallengeAdapter adapter;
+    private List<Game> list = new ArrayList<>();
+    private ChallengeAdapter adapter;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -46,6 +47,13 @@ public class ChallengeFragment extends Fragment {
         recyclerView.setLayoutManager(layoutManager);
         adapter = new ChallengeAdapter(list, this);
         recyclerView.setAdapter(adapter);
+        handler = new MessageHandler(this);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        handler = null;
     }
 
     @Override
@@ -58,8 +66,8 @@ public class ChallengeFragment extends Fragment {
         adapter.notifyItemChanged(requestCode);
     }
 
-    private static void loadChallenge() {
-        list = new ArrayList<>();
+    public void loadChallenge() {
+        list.clear();
         String json = FileManager.readAsset(App.getContext(), "challenge.json");
         Gson gson = new Gson();
         JsonParser parser = new JsonParser();
@@ -73,9 +81,32 @@ public class ChallengeFragment extends Fragment {
     }
 
     public static void freshList() {
-        loadChallenge();
-        if (adapter != null)
-            adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        if (handler != null) {
+            Message message = new Message();
+            message.what = MessageHandler.EVENT_FRESH_LIST;
+            handler.sendMessage(message);
+        }
+    }
+
+    private static MessageHandler handler;
+
+    static class MessageHandler extends Handler {
+        static final int EVENT_FRESH_LIST = 0x01;
+
+        private ChallengeFragment fragment;
+        MessageHandler(ChallengeFragment fragment) {
+            this.fragment = fragment;
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case EVENT_FRESH_LIST:
+                    fragment.loadChallenge();
+                    fragment.adapter.notifyDataSetChanged();
+                    break;
+            }
+        }
     }
 
 }

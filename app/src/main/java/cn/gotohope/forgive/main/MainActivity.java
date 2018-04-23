@@ -1,18 +1,13 @@
 package cn.gotohope.forgive.main;
 
-import android.content.Intent;
 import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.view.PagerAdapter;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.MenuItem;
-import android.view.View;
 
 import com.xinsane.util.LogUtil;
 
@@ -20,8 +15,6 @@ import cn.gotohope.forgive.R;
 import cn.gotohope.forgive.main.account.AccountFragment;
 import cn.gotohope.forgive.main.challenge.ChallengeFragment;
 import cn.gotohope.forgive.main.game.GameListFragment;
-import cn.gotohope.forgive.user.LoginActivity;
-import cn.gotohope.forgive.user.UserManager;
 
 public class MainActivity extends AppCompatActivity {
 
